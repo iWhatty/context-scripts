@@ -1,56 +1,26 @@
-context-scripts
+# context-scripts
 
-Fast local scripts for turning folders of source code into clean, ChatGPT-ready context.
+Fast local scripts for turning source folders into clean, LLM-ready context.
 
-Built for low-friction workflows like:
-	•	right click a folder in macOS Finder
-	•	run a Quick Action
-	•	copy formatted code context to clipboard
-	•	paste directly into ChatGPT
+`context-scripts` is built for a simple workflow on macOS:
 
-Repo: https://github.com/iWhatty/context-scripts.git
+1. Right-click a folder in Finder
+2. Run a Quick Action
+3. Copy formatted code context to the clipboard
+4. Paste it into ChatGPT or another LLM
 
-⸻
+## What it does
 
-What it does
+The macOS script can:
 
-The macOS context script can:
-	•	recursively scan a selected folder
-	•	collect source files by extension
-	•	ignore common junk folders like node_modules, .git, build, dist, etc.
-	•	format output as a readable markdown bundle
-	•	place file paths above each code block
-	•	send the result to clipboard through a macOS Shortcut / Quick Action
+- Recursively scan a selected folder
+- Collect source files by extension or profile
+- Skip common junk folders like `.git`, `node_modules`, `dist`, and `build`
+- Format output as a readable markdown bundle
+- Print the result to stdout or write it to a file
+- Plug into macOS Shortcuts and Finder Quick Actions
 
-Example output:
-
-# Project Context
-
-- Root: /Users/yourname/dev/my-project/src
-- Profile: default
-- Included files: 3
-- Extensions: .js, .kt, .py, .ts
-
-## File List
-
-- parser/MainParser.kt
-- parser/Tokenizer.kt
-- util/DateUtils.kt
-
----
-
-## File: parser/MainParser.kt
-
-```kotlin
-// code here
-
-File: parser/Tokenizer.kt
-
-// code here
-
----
-
-## Repo structure
+## Repository structure
 
 ```text
 context-scripts/
@@ -59,108 +29,106 @@ context-scripts/
 │   ├── run-copy-context.sh
 │   └── ...
 └── README.md
+```
 
+## macOS setup
 
-⸻
-
-macOS setup
-
-1. Put the scripts somewhere stable
+### 1. Put the scripts somewhere stable
 
 Keep the scripts in a non-protected folder such as:
 
-/Users/yourname/scripts
+```text
+/Users/*USER_NAME*/scripts
+```
 
-Avoid building this around Documents, because macOS privacy controls can block Quick Actions from reading folder contents there.
+A simple layout:
 
-A good working layout is:
+```text
+/Users/*USER_NAME*/scripts/copy-context.js
+/Users/*USER_NAME*/scripts/run-copy-context.sh
+```
 
-/Users/yourname/scripts/copy-context.js
-/Users/yourname/scripts/run-copy-context.sh
+Avoid building this around `Documents` if you plan to trigger it from Finder Quick Actions or Shortcuts. macOS privacy controls can block automated directory reads there.
 
-Keep your actual code repos in something like:
+### 2. Make the wrapper executable
 
-/Users/yourname/dev
-/Users/yourname/projects
+```bash
+chmod +x /Users/*USER_NAME*/scripts/run-copy-context.sh
+```
 
+### 3. Use a real Node binary path
 
-⸻
+If you use `fnm`, `nvm`, or another version manager, Shortcuts may not inherit your normal shell environment.
 
-2. Make the wrapper executable
+So this can fail inside a Quick Action:
 
-chmod +x /Users/yourname/scripts/run-copy-context.sh
-
-
-⸻
-
-3. Use a real Node binary path
-
-If you use a version manager like fnm, nvm, or similar, macOS Shortcuts may not inherit your normal shell environment.
-
-That means this often fails inside a Quick Action:
-
+```bash
 node copy-context.js ...
+```
 
-Instead, use the real Node binary path.
+Use the real Node binary path instead.
 
 Find it with:
 
+```bash
 python3 - <<'PY'
 import os
 print(os.path.realpath(os.popen("which node").read().strip()))
 PY
+```
 
-Then use that exact path inside the shell wrapper.
+Then set that exact path inside the shell wrapper.
 
 Example:
 
-NODE_BIN="/Users/yourname/.local/share/fnm/node-versions/v24.14.0/installation/bin/node"
+```bash
+NODE_BIN="/Users/*USER_NAME*/.local/share/fnm/node-versions/v24.14.0/installation/bin/node"
+```
 
-Yes, this is ugly. Yes, it works.
+Ugly, but reliable.
 
-⸻
+## Finder Quick Action integration
 
-macOS Shortcut / Finder Quick Action integration
+### Goal
 
-This is the main event.
+Right-click a folder in Finder, run a Quick Action, and copy the formatted context to the clipboard.
 
-Goal
-
-Right click a folder in Finder, run a Quick Action, and copy the formatted context to clipboard.
-
-Shortcut flow
+### Shortcut flow
 
 Create a Shortcut or Finder Quick Action with:
-	1.	Accepts: folders
-	2.	Run Shell Script
-	3.	Copy to Clipboard
-	4.	optional: Show Notification
 
-Run Shell Script settings
-	•	Shell: zsh
-	•	Input: Shortcut Input
-	•	Pass input: as arguments
+1. **Accepts**: folders
+2. **Run Shell Script**
+3. **Copy to Clipboard**
+4. Optional: **Show Notification**
 
-Shell script command
+### Run Shell Script settings
 
-/bin/zsh /Users/yourname/scripts/run-copy-context.sh "$1"
+- **Shell**: `zsh`
+- **Input**: `Shortcut Input`
+- **Pass input**: `as arguments`
 
-This wrapper should print the final context to stdout.
+### Shell command
 
-Then let the Shortcut’s Copy to Clipboard action handle the clipboard.
+```bash
+/bin/zsh /Users/*USER_NAME*/scripts/run-copy-context.sh "$1"
+```
 
-Do not also call pbcopy inside the wrapper if Shortcuts is already copying the shell output.
+The wrapper should print the final context to stdout.
 
-⸻
+Let the Shortcut’s **Copy to Clipboard** action handle the clipboard.
 
-Example wrapper script
+Do **not** also call `pbcopy` inside the wrapper if Shortcuts is already copying the shell output.
 
-macos/run-copy-context.sh
+## Example wrapper script
 
+File: `macos/run-copy-context.sh`
+
+```bash
 #!/bin/zsh
 
 TARGET_DIR="$1"
-SCRIPT="/Users/yourname/scripts/copy-context.js"
+SCRIPT="/Users/*USER_NAME*/scripts/copy-context.js"
 NODE_BIN="/absolute/path/to/your/node"
 
 if [ -z "$TARGET_DIR" ]; then
@@ -169,162 +137,142 @@ if [ -z "$TARGET_DIR" ]; then
 fi
 
 "$NODE_BIN" "$SCRIPT" "$TARGET_DIR" --stdout
+```
 
+## Usage
 
-⸻
+### Print to stdout
 
-Example Node script usage
-
-Print to stdout
-
+```bash
 node copy-context.js /path/to/project --stdout
+```
 
-Write context.txt into the target folder
+### Write `context.txt` into the target folder
 
+```bash
 node copy-context.js /path/to/project
+```
 
-Custom extensions
+### Use custom extensions
 
+```bash
 node copy-context.js /path/to/project --ext js,ts,py,kt,java,xml --stdout
+```
 
-Profile-based scan
+### Use a profile
 
+```bash
 node copy-context.js /path/to/project --profile android --stdout
+```
 
+## Profiles
 
-⸻
-
-Profiles
-
-The script supports extension profiles so you do not have to keep manually swapping file filters.
+The script supports extension profiles so you do not have to keep swapping file filters by hand.
 
 Example profiles:
-	•	default
-	•	web
-	•	android
-	•	python
-	•	allcode
+
+- `default`
+- `web`
+- `android`
+- `python`
+- `allcode`
 
 Example:
 
+```bash
 node copy-context.js /path/to/project --profile android --stdout
+```
 
-
-⸻
-
-Supported features
+## Supported features
 
 Depending on the current script version, features may include:
-	•	extension profiles
-	•	recursive scanning
-	•	max file size limit
-	•	max total output size limit
-	•	max file count
-	•	skipped file summaries
-	•	.contextignore
-	•	git-tracked mode
-	•	git-changed mode
 
-⸻
+- Extension profiles
+- Recursive scanning
+- Max file size limit
+- Max total output size limit
+- Max file count
+- Skipped file summaries
+- `.contextignore`
+- Git-tracked mode
+- Git-changed mode
 
-.contextignore
+## `.contextignore`
 
-You can place a .contextignore file at the root of a repo to exclude extra files or folders.
+You can place a `.contextignore` file at the root of a repo to exclude extra files or folders.
 
 Example:
 
+```text
 generated
 tmp
 *.snap
 *.svg
 package-lock.json
 pnpm-lock.yaml
+```
 
-This is intentionally simpler than full .gitignore parsing.
+This is intentionally simpler than full `.gitignore` parsing.
 
-⸻
+## Troubleshooting
 
-Why not store repos in Documents?
+### The Quick Action runs, but no files are found
 
-Because macOS likes to act like your own folders are state secrets.
+First, check whether the folder is inside `Documents` or another protected location.
 
-Finder Quick Actions and Shortcuts may receive the selected folder path correctly, but still fail to read the directory contents if the target lives inside protected folders like:
-	•	Documents
-	•	Desktop
-	•	Downloads
+If so, move it somewhere less annoying, like:
 
-You may see errors like:
+```text
+/Users/*USER_NAME*/dev
+```
 
-EPERM: operation not permitted, scandir '/Users/yourname/Documents/...'
+Also make sure the file extensions you want are included in the active profile.
 
-The easiest fix is to work from:
+### `node` works in Terminal, but not in Shortcuts
 
-/Users/yourname/dev
-/Users/yourname/projects
-
-instead.
-
-⸻
-
-Troubleshooting
-
-The Quick Action runs, but no files are found
-
-First check whether the folder is inside Documents or another protected location.
-
-If so, move the repo to something like:
-
-/Users/yourname/dev
-
-Also make sure the file extensions you want are actually included in the active profile.
-
-node works in Terminal, but not in Shortcuts
-
-That usually means Shortcuts cannot see your shell-managed PATH.
+That usually means Shortcuts cannot see your shell-managed `PATH`.
 
 Use the real Node binary path instead of relying on:
 
+```bash
 node
+```
 
-inside the Quick Action shell environment.
+inside the Quick Action environment.
 
-Clipboard is only getting a status message
+### The clipboard only gets a status message
 
-That means your wrapper is echoing something like:
+That means your wrapper is printing something like:
 
+```bash
 echo "Code context copied to clipboard"
+```
 
-and Shortcuts is copying that output instead of the real context.
+and Shortcuts is copying that message instead of the actual formatted context.
 
-Fix: have the wrapper print the actual context only, and let Shortcuts handle the clipboard.
+Fix it by having the wrapper print only the real context output.
 
-⸻
+## Recommended workflow
 
-Recommended workflow
+- Keep scripts in `/Users/*USER_NAME*/scripts`
+- Keep repos somewhere like `/Users/*USER_NAME*/dev`
+- Trigger the script from a Finder Quick Action
+- Paste the output directly into ChatGPT
+- Do not dump giant trash folders into a model unless you enjoy bad results
 
-For best results:
-	•	keep scripts in /Users/yourname/scripts
-	•	keep repos in /Users/yourname/dev
-	•	trigger via Finder Quick Action
-	•	copy formatted context straight into ChatGPT
-	•	avoid dumping giant folders unless you enjoy feeding sludge into models
+## Roadmap
 
-⸻
+Possible upgrades:
 
-Roadmap
+- Ranked file ordering
+- Changed-files-first mode
+- Git-aware prioritization
+- VS Code integration
+- Raycast integration
+- Open-tabs mode
+- Selected-files mode
+- Better token and byte budgeting
 
-Planned or possible upgrades:
-	•	ranked file ordering
-	•	changed-files-first mode
-	•	git-aware prioritization
-	•	VS Code integration
-	•	Raycast integration
-	•	open-tabs mode
-	•	selected-files mode
-	•	token/byte budgeting improvements
-
-⸻
-
-License
+## License
 
 MIT

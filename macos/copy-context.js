@@ -488,8 +488,9 @@ function buildOutput(rootDir, results, args, state) {
   }
 
 
-  output += "\n---\n\n";
-  totalBytes += Buffer.byteLength("---\n\n", "utf8");
+  const divider = "\n---\n\n";
+  output += divider;
+  totalBytes += Buffer.byteLength(divider, "utf8");
 
   for (const entry of included) {
     const section = [
@@ -559,7 +560,7 @@ function main() {
   const output = buildOutput(rootDir, results, args, state);
 
   if (args.stdout) {
-    process.stdout.write(output);
+    process.stdout.write(output.endsWith("\n") ? output : output + "\n");
     return;
   }
 
