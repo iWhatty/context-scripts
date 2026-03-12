@@ -1,0 +1,424 @@
+Windows Notes
+
+A simple Windows setup for grabbing code context from the current File Explorer folder with a hotkey.
+
+The goal is straightforward:
+	•	open a folder in File Explorer
+	•	press a hotkey
+	•	collect matching code files
+	•	copy the formatted result to clipboard
+	•	optionally write context.txt
+
+This version is intentionally lightweight. No Node runtime, no Git integration, no giant config jungle.
+
+⸻
+
+Overview
+
+The Windows version is built around:
+	•	get-context.ahk
+	•	config.ini
+	•	an active File Explorer window
+	•	a hotkey, such as Ctrl + Alt + C
+
+When the hotkey is pressed, the script should:
+	1.	detect the active Explorer folder
+	2.	scan that folder recursively
+	3.	collect matching source files
+	4.	skip ignored folders such as node_modules or .git
+	5.	build one clean text output
+	6.	copy it to clipboard
+	7.	optionally save context.txt in that folder
+
+⸻
+
+Why AutoHotkey?
+
+Because this job is simple.
+
+We are not building a compiler, language server, or repo intelligence system.
+We are concatenating code files cleanly.
+
+AutoHotkey is a good fit because it can:
+	•	react to a hotkey
+	•	inspect File Explorer
+	•	get the current folder path
+	•	read files
+	•	build text output
+	•	copy text to clipboard
+	•	optionally write a file
+
+That means Windows users do not need Node just to glue text files together.
+
+⸻
+
+Suggested repo structure
+
+windows/
+  get-context.ahk
+  config.ini
+  README-windows.md
+
+Optional later:
+
+  get-context.exe
+
+if the script is compiled.
+
+⸻
+
+Basic workflow
+
+User flow
+	1.	Launch get-context.ahk
+	2.	Keep it running in the tray
+	3.	Open File Explorer and navigate to a code folder
+	4.	Press the hotkey
+	5.	Paste into ChatGPT or a text editor
+
+Example use case
+
+You open a folder like:
+
+C:\Users\you\dev\my-app\parser
+
+Then press Ctrl + Alt + C.
+
+The script collects matching files such as:
+	•	Tokenizer.kt
+	•	ParserRule.kt
+	•	SpanTracker.kt
+
+Then copies one formatted context block into your clipboard.
+
+⸻
+
+Recommended config format
+
+Use a config.ini file like this:
+
+[hotkey]
+value=^!c
+
+[extensions]
+list=js,ts,jsx,tsx,py,kt,java,rs,go,cs,html,css,xml,json,md
+
+[ignore_dirs]
+list=.git,node_modules,dist,build,out,target,.next,coverage,venv,.venv,__pycache__,.idea,.vscode,.gradle
+
+[ignore_suffixes]
+list=.min.js,.map,.lock,.log
+
+[output]
+mode=both
+output_file=context.txt
+
+[scan]
+recursive=true
+max_files=200
+
+
+⸻
+
+Config meaning
+
+[hotkey]
+
+value=^!c
+
+Default hotkey:
+	•	^ = Ctrl
+	•	! = Alt
+	•	c = C
+
+So this means:
+	•	Ctrl + Alt + C
+
+⸻
+
+[extensions]
+
+list=js,ts,jsx,tsx,py,kt,java,rs,go,cs,html,css,xml,json,md
+
+These are the file extensions that should be included.
+
+You can shrink this list if you want a tighter workflow.
+
+Example minimal version:
+
+list=js,ts,py,kt
+
+
+⸻
+
+[ignore_dirs]
+
+list=.git,node_modules,dist,build,out,target,.next,coverage,venv,.venv,__pycache__,.idea,.vscode,.gradle
+
+These directory names should be skipped during recursive scanning.
+
+This is exact-name matching, not full .gitignore semantics.
+
+⸻
+
+[ignore_suffixes]
+
+list=.min.js,.map,.lock,.log
+
+These file suffixes should be skipped.
+
+Useful for avoiding:
+	•	minified JS
+	•	sourcemaps
+	•	lockfiles
+	•	logs
+
+⸻
+
+[output]
+
+mode=both
+output_file=context.txt
+
+Supported mode ideas:
+	•	clipboard
+	•	file
+	•	both
+
+Recommended default for v1:
+	•	both
+
+Why?
+Because clipboard is fast, and context.txt is useful for backup and debugging.
+
+⸻
+
+[scan]
+
+recursive=true
+max_files=200
+
+	•	recursive=true means scan subfolders too
+	•	max_files=200 prevents accidental disaster scans
+
+This is not about elegance. It is about stopping people from blasting 4,000 files into the clipboard by mistake.
+
+⸻
+
+Expected output format
+
+The output should be simple and readable.
+
+Example:
+
+# Project Context
+
+Root: C:\Users\you\dev\my-app\parser
+Files: 3
+
+## File List
+- core\Tokenizer.kt
+- core\ParserRule.kt
+- core\SpanTracker.kt
+
+---
+
+## File: core\Tokenizer.kt
+
+```kotlin
+// file contents
+
+File: core\ParserRule.kt
+
+// file contents
+
+### Minimum formatting requirements
+
+- show the root folder path
+- show file count
+- show relative path above each file
+- use fenced code blocks when possible
+- separate files clearly
+- end output with a trailing newline
+
+That is enough.
+
+---
+
+## Behavior spec
+
+When the hotkey is pressed, the script should:
+
+1. verify the active window is File Explorer
+2. get the current folder path
+3. verify the folder exists
+4. recursively collect matching files
+5. skip ignored directories and suffixes
+6. build one formatted output string
+7. copy it to clipboard and/or write `context.txt`
+8. show a small success notification
+
+---
+
+## Failure handling
+
+### Case: active window is not File Explorer
+
+Show a small message like:
+
+```text
+Active window is not File Explorer.
+
+Do not silently do nothing.
+
+⸻
+
+Case: current Explorer location is not a normal folder
+
+Show a small message like:
+
+Current Explorer location is not a folder.
+
+
+⸻
+
+Case: no matching files found
+
+Do not silently fail.
+
+Preferred result:
+
+# Project Context
+
+Root: C:\some\folder
+Files: 0
+
+No matching files found.
+
+
+⸻
+
+Case: too many files
+
+Stop at max_files and include a short note like:
+
+Stopped after 200 files.
+
+
+⸻
+
+Case: one file cannot be read
+
+Skip it and continue.
+
+Optional:
+include a short skipped note in the output.
+
+Do not crash the whole run because one file is weird.
+
+⸻
+
+Recommended defaults
+
+Good v1 defaults:
+	•	hotkey: Ctrl + Alt + C
+	•	recursive scan: true
+	•	mode: both
+	•	output file: context.txt
+	•	max files: 200
+
+⸻
+
+Example output modes
+
+Clipboard only
+
+Best for:
+	•	fast ChatGPT loop
+	•	quick inspection
+	•	minimal clutter
+
+File only
+
+Best for:
+	•	debugging
+	•	keeping a saved artifact
+	•	fallback if clipboard is unreliable
+
+Both
+
+Best for:
+	•	general use
+	•	easiest support
+	•	easiest debugging
+
+⸻
+
+Suggested implementation boundaries
+
+Keep the script focused.
+
+The AHK tool should do only this:
+	•	hotkey trigger
+	•	active Explorer path detection
+	•	config loading
+	•	recursive scan
+	•	extension filtering
+	•	ignored folder filtering
+	•	output formatting
+	•	clipboard/file write
+	•	small notifications
+
+Do not drag in:
+	•	Git state
+	•	language profiles
+	•	byte accounting
+	•	token counting
+	•	shell extension complexity
+	•	right-click menu registration
+
+Those can wait.
+
+⸻
+
+Why not start with the Windows context menu?
+
+Because hotkey-first is simpler and faster to ship.
+
+A hotkey-based workflow avoids:
+	•	registry installation
+	•	Windows 11 context-menu weirdness
+	•	Explorer shell integration pain
+
+And for power users, hotkey is often better anyway.
+
+Open Explorer, press one combo, paste. Done.
+
+⸻
+
+Future upgrades
+
+Not needed for v1, but possible later:
+	•	tray menu for switching between clipboard/file/both
+	•	quick config editor button
+	•	alternate hotkey for non-recursive mode
+	•	context menu installer
+	•	compile to .exe
+	•	optional skipped-file summary
+	•	current-folder-only mode
+
+⸻
+
+v1 acceptance criteria
+
+This Windows tool is good enough when:
+	•	it detects the active Explorer folder correctly
+	•	it scans recursively
+	•	it includes only allowed extensions
+	•	it skips ignored folders
+	•	it builds readable output with relative paths
+	•	it copies to clipboard reliably
+	•	it optionally writes context.txt
+	•	it fails cleanly when no folder or no files are available
+
+That is enough to ship.
