@@ -14,13 +14,13 @@ CONFIG_PATH := A_ScriptDir "\config.ini"
 gConfig := LoadConfig(CONFIG_PATH)
 
 try {
-    Hotkey(gConfig.hotkey, RunContextGrabber)
+    Hotkey(gConfig["hotkey"], RunContextGrabber)
 } catch as err {
-    MsgBox("Failed to register hotkey '" gConfig.hotkey "'.`n`n" err.Message, "get-context", "Iconx")
+    MsgBox("Failed to register hotkey '" . gConfig["hotkey"] . "'.`n`n" . err.Message, "get-context", "Iconx")
     ExitApp
 }
 
-TraySetTip("get-context`nHotkey: " gConfig.hotkey)
+TrayTip ("get-context`nHotkey: " . gConfig["hotkey"])
 return
 
 RunContextGrabber(*) {
@@ -38,13 +38,13 @@ RunContextGrabber(*) {
     }
 
     result := CollectFiles(folderPath, gConfig)
-    output := BuildContext(folderPath, result.files, result.skipped, result.stopReason)
+    output := BuildContext(folderPath, result["files"], result["skipped"], result["stopReason"])
 
     wroteClipboard := false
     wroteFile := false
-    outputPath := folderPath "\\" gConfig.outputFile
+    outputPath := folderPath "\\" gConfig["outputFile"]
 
-    mode := StrLower(gConfig.outputMode)
+    mode := StrLower(gConfig["outputMode"])
 
     try {
         if (mode = "clipboard" || mode = "both") {
@@ -76,17 +76,17 @@ RunContextGrabber(*) {
         return
     }
 
-    msg := "Context ready: " result.files.Length " file(s)"
-    if result.stopReason
-        msg .= "`n" result.stopReason
+    msg := "Context ready: " . result["files"].Length . " file(s)"
+    if result["stopReason"]
+        msg .= "`n" result["stopReason"]
     if wroteClipboard && wroteFile
-        msg .= "`nCopied to clipboard and wrote " gConfig.outputFile
+        msg .= "`nCopied to clipboard and wrote " . gConfig["outputFile"]
     else if wroteClipboard
         msg .= clipboardRestorePending
             ? "`nCopied to clipboard (previous clipboard will be restored after Ctrl+V)"
             : "`nCopied to clipboard"
     else if wroteFile
-        msg .= "`nWrote " gConfig.outputFile
+        msg .= "`nWrote " . gConfig["outputFile"]
 
     Notify(msg)
 }
@@ -292,70 +292,74 @@ BuildContext(rootPath, files, skipped, stopReason) {
     count := files.Length
 
     out := "# Project Context`r`n`r`n"
-    out .= "Root: " rootPath "`r`n"
-    out .= "Files: " count "`r`n`r`n"
-
+    out .= "Root: " . rootPath . "`r`n"
+    out .= "Files: " . count . "`r`n`r`n"
+    
     if (count = 0) {
         out .= "No matching files found.`r`n"
         if stopReason
-            out .= "`r`n" stopReason "`r`n"
+            out .= "`r`n" . stopReason . "`r`n"
         return EnsureTrailingNewline(out)
     }
-
+    
     out .= "## File List`r`n"
     for file in files
-        out .= "- " file["relativePath"] "`r`n"
-
+        out .= "- " . file["relativePath"] . "`r`n"
+    
     if (skipped.Length > 0) {
         out .= "`r`n## Skipped`r`n"
         maxSkipped := Min(10, skipped.Length)
         Loop maxSkipped {
             entry := skipped[A_Index]
-            out .= "- " entry["relativePath"] ": " entry["reason"] "`r`n"
+            out .= "- " . entry["relativePath"] . ": " . entry["reason"] . "`r`n"
         }
         if (skipped.Length > maxSkipped)
-            out .= "- ... and " (skipped.Length - maxSkipped) " more`r`n"
+            out .= "- ... and " . (skipped.Length - maxSkipped) . " more`r`n"
     }
-
+    
     if stopReason
-        out .= "`r`nStop: " stopReason "`r`n"
-
+        out .= "`r`nStop: " . stopReason . "`r`n"
+    
     out .= "`r`n---`r`n`r`n"
-
+    
     for file in files {
         lang := FenceLanguage(file["ext"])
-        out .= "## File: " file["relativePath"] "`r`n`r`n"
-        out .= "```" lang "`r`n"
+        out .= "## File: " . file["relativePath"] . "`r`n`r`n"
+        out .= "```"" . lang . "`r`n"
         out .= file["content"]
         if !EndsWith(file["content"], "`n")
             out .= "`r`n"
-        out .= "```" "`r`n`r`n"
+        out .= "```"" . "`r`n`r`n"
     }
 
     return EnsureTrailingNewline(out)
 }
 
 FenceLanguage(ext) {
-    static map := Map(
-        ".js", "js",
-        ".ts", "ts",
-        ".jsx", "jsx",
-        ".tsx", "tsx",
-        ".py", "python",
-        ".kt", "kotlin",
-        ".java", "java",
-        ".rs", "rust",
-        ".go", "go",
-        ".cs", "csharp",
-        ".html", "html",
-        ".css", "css",
-        ".xml", "xml",
-        ".json", "json",
-        ".md", "markdown"
-    )
+    static langMap := ""
+
+    if !IsObject(langMap) {
+        langMap := Map(
+            ".js", "js",
+            ".ts", "ts",
+            ".jsx", "jsx",
+            ".tsx", "tsx",
+            ".py", "python",
+            ".kt", "kotlin",
+            ".java", "java",
+            ".rs", "rust",
+            ".go", "go",
+            ".cs", "csharp",
+            ".html", "html",
+            ".css", "css",
+            ".xml", "xml",
+            ".json", "json",
+            ".md", "markdown"
+        )
+    }
 
     lowerExt := StrLower(ext)
-    return map.Has(lowerExt) ? map[lowerExt] : ""
+    return langMap.Has(lowerExt) ? langMap[lowerExt] : ""
 }
 
 EnsureTrailingNewline(text) {
@@ -372,7 +376,7 @@ SortByRelativePath(arr) {
             i := A_Index
             a := arr[i]
             b := arr[i + 1]
-            if (StrLower(a["relativePath"]) > StrLower(b["relativePath"])) {
+            if (StrCompare(StrLower(a["relativePath"]), StrLower(b["relativePath"])) > 0) {
                 arr[i] := b
                 arr[i + 1] := a
                 swapped := true
