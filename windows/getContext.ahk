@@ -7,6 +7,16 @@
 #SingleInstance Force
 Persistent
 
+
+SetWorkingDir(A_ScriptDir)
+
+if !A_IsAdmin {
+    Run('*RunAs "' . A_ScriptFullPath . '"')
+    ExitApp
+}
+
+
+
 previousClipboard := ""
 clipboardRestorePending := false
 
@@ -185,16 +195,16 @@ CollectFiles(rootPath, cfg) {
 
 WalkFolder(currentPath, rootPath, cfg, result) {
     if (result["files"].Length >= cfg["maxFiles"]) {
-        result["stopReason"] := "Stopped after " cfg["maxFiles"] " files."
+        result["stopReason"] := "Stopped after " . cfg["maxFiles"] . " files."
         return
     }
 
     loopMode := cfg["recursive"] ? "FD" : "F"
-    pattern := cfg["recursive"] ? currentPath "\*" : currentPath "\*"
+    pattern := cfg["recursive"] ? currentPath . "\*" : currentPath . "\*"
 
     Loop Files pattern, loopMode {
         if (result["files"].Length >= cfg["maxFiles"]) {
-            result["stopReason"] := "Stopped after " cfg["maxFiles"] " files."
+            result["stopReason"] := "Stopped after " . cfg["maxFiles"] . " files."
             return
         }
 
@@ -322,14 +332,16 @@ BuildContext(rootPath, files, skipped, stopReason) {
     
     out .= "`r`n---`r`n`r`n"
     
+    fence := Chr(96) . Chr(96) . Chr(96)
+
     for file in files {
         lang := FenceLanguage(file["ext"])
         out .= "## File: " . file["relativePath"] . "`r`n`r`n"
-        out .= "```"" . lang . "`r`n"
+        out .= fence . lang . "`r`n"
         out .= file["content"]
         if !EndsWith(file["content"], "`n")
             out .= "`r`n"
-        out .= "```"" . "`r`n`r`n"
+        out .= fence . "`r`n`r`n"
     }
 
     return EnsureTrailingNewline(out)
@@ -400,6 +412,8 @@ HasClipboardTextOrData() {
 RestoreClipboardAfterPaste(*) {
     global previousClipboard, clipboardRestorePending
 
+    Hotkey("^v", RestoreClipboardAfterPaste, "Off")
+
     Send("^v")
     Sleep(150)
 
@@ -409,7 +423,6 @@ RestoreClipboardAfterPaste(*) {
 
     previousClipboard := ""
     clipboardRestorePending := false
-    Hotkey("^v", RestoreClipboardAfterPaste, "Off")
 }
 
 Notify(message) {
